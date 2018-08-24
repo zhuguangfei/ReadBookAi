@@ -106,3 +106,7 @@ def model_fn(features, labels, mode, params):
         train_op=train_op,
         eval_metric_ops={'accuracy': tf.metrics.accuracy(labels, predictions)},
     )
+
+
+def create_estimator_and_specs(run_config):
+    pass

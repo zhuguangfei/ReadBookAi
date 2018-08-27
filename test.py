@@ -13,11 +13,13 @@ import os
 # print(content)
 # if content:
 # print(content)
-images = os.listdir('child_image')
+image_file_path = 'image5'
+text_file_path = 'text5'
+images = os.listdir(image_file_path)
 url = 'https://aip.baidubce.com/rest/2.0/ocr/v1/webimage?access_token=24.af51a2ea2271ee69b4df58858224e3ba.2592000.1537683914.282335-11722929'
 headers = {'Content-Type': 'application/x-www-form-urlencoded'}
 for image in images:
-    image_path = os.path.join('child_image', image)
+    image_path = os.path.join(image_file_path, image)
     f = open(image_path, 'rb')
     lsf = base64.b64encode(f.read())
     f.close()
@@ -27,7 +29,8 @@ for image in images:
     response = request.urlopen(requ)
     c = response.read()
     words_results = json.loads(c.decode('utf-8')).get('words_result')
-    name = image.split('.')[0]
-    with open(f'image_text/{name}.txt', 'w', encoding='utf-8') as w:
-        for words_result in words_results:
-            w.write(words_result.get('words') + '\n')
+    if words_results:
+        name = image.split('.')[0]
+        with open(f'{text_file_path}/{name}.txt', 'w', encoding='utf-8') as w:
+            for words_result in words_results:
+                w.write(words_result.get('words') + '\n')

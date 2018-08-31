@@ -91,8 +91,65 @@ def label_length():
     print(count[0][1])
 
 
+from PIL import Image
+import numpy as np
+
+
+def get_xy():
+    images = os.listdir('image')
+    X = []
+    for image in images:
+        image = Image.open(os.path.join('image', image))
+        X.append(np.array(image))
+    labels = os.listdir('label')
+    Y = []
+    for label in labels:
+        with open(os.path.join('label', label), 'r') as r:
+            words = r.read().split(' ')
+            words = [word for word in words if word.strip()]
+            if len(words) <= 80:
+                for _ in range(80 - len(words)):
+                    words.append(str('0'))
+            else:
+                words = words[0:80]
+            y = []
+            for w in words:
+                y.append(int(w))
+            Y.append(y)
+    X = np.array(X, np.int16)
+    Y = np.array(Y, np.int16)
+    return X, Y
+
+
+def get_xy_test():
+    images = os.listdir('image_test')
+    X = []
+    for image in images:
+        image = Image.open(os.path.join('image_test', image))
+        X.append(np.array(image))
+    labels = os.listdir('label_test')
+    Y = []
+    for label in labels:
+        with open(os.path.join('label_test', label), 'r') as r:
+            words = r.read().split(' ')
+            words = [word for word in words if word.strip()]
+            if len(words) <= 80:
+                for _ in range(80 - len(words)):
+                    words.append(str('0'))
+            else:
+                words = words[0:80]
+            y = []
+            for w in words:
+                y.append(int(w))
+            Y.append(y)
+    X = np.array(X, np.int16)
+    Y = np.array(Y, np.int16)
+    return X, Y
+
+
 if __name__ == '__main__':
     # build_vocabulary()
     # gen_label()
     # move_image()
-    label_length()
+    # label_length()
+    get_xy()

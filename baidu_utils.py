@@ -13,8 +13,10 @@ import os
 # print(content)
 # if content:
 # print(content)
-image_file_path = 'image5'
-text_file_path = 'text5'
+image_file_path = 'source_two/image3'
+text_file_path = 'source_two/text3'
+if not os.path.exists(text_file_path):
+    os.makedirs(text_file_path)
 images = os.listdir(image_file_path)
 url = 'https://aip.baidubce.com/rest/2.0/ocr/v1/webimage?access_token=24.af51a2ea2271ee69b4df58858224e3ba.2592000.1537683914.282335-11722929'
 headers = {'Content-Type': 'application/x-www-form-urlencoded'}

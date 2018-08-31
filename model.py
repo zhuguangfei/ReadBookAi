@@ -3,15 +3,16 @@ import tensorflow as tf
 
 
 def _variable_on_cpu(name, shape, initializer):
-    with tf.device('/cpu:0'):
-        var = tf.get_variable(name, shape, initializer)
+    var = tf.get_variable(
+        name=name, shape=shape, dtype=tf.float16, initializer=initializer
+    )
     return var
 
 
 def _variable_with_weight_decay(name, shape, stddev, wd):
     var = _variable_on_cpu(name, shape, tf.truncated_normal_initializer(stddev=stddev))
     if wd:
-        weight_decay = tf.mul(tf.nn.l2_loss(var), wd, name='weight_loss')
+        weight_decay = tf.multiply(tf.nn.l2_loss(var), wd, name='weight_loss')
         tf.add_to_collection('losses', weight_decay)
     return var
 
@@ -62,8 +63,68 @@ def inference(images):
 
     with tf.variable_scope('softmax_linear') as scope:
         weights = _variable_with_weight_decay(
-            'weights', [192, 40], stddev=1 / 192.0, wd=None
+            'weights', [192, 80], stddev=1 / 192.0, wd=None
         )
-        biases = _variable_on_cpu('biases', [40], tf.constant_initializer(0.0))
+        biases = _variable_on_cpu('biases', [80], tf.constant_initializer(0.0))
         softmax_linear = tf.add(tf.matmul(local4, weights), biases, name=scope.name)
     return softmax_linear
+
+
+def loss(logits, labels):
+    labels = tf.cast(labels, tf.int64)
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
+        labels=labels, logits=logits, name='cross_entropy_per_example'
+    )
+    cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
+    tf.add_to_collection('losses', cross_entropy_mean)
+    return tf.add_n(tf.get_collection('losses'), name='total_loss')
+
+
+from data_util import get_xy, get_xy_test
+import numpy as np
+
+
+def train():
+    training_epochs = 10
+    batch_size = 10
+    X, Y = get_xy()
+    train_x = tf.placeholder(tf.float16, [batch_size, 500, 500, 3])
+    train_y = tf.placeholder(tf.float16, [batch_size, 80])
+    softmax_linear = inference(train_x)
+    total_loss = loss(softmax_linear, train_y)
+    tf.train.AdamOptimizer(0.001).minimize(total_loss)
+    saver = tf.train.Saver(tf.global_variables(), max_to_keep=1)
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        for step in range(training_epochs):
+            # for _ in range(10):
+            print('--------------')
+            indexs = np.random.choice(range(10), 10)
+            batch_x = X[indexs]
+            batch_y = Y[indexs]
+            ls = sess.run([total_loss], feed_dict={train_x: batch_x, train_y: batch_y})
+            saver.save(sess, 'save/checkpoint', global_step=step)
+            print(ls)
+
+
+def predict():
+    X, Y = get_xy_test()
+    predict_x = tf.placeholder(tf.float16, [1, 500, 500, 3])
+    softmax_linear = inference(predict_x)
+    saver = tf.train.Saver(tf.global_variables())
+    with tf.Session() as sess:
+        ckpt = tf.train.get_checkpoint_state('save')
+        saver.restore(sess, ckpt.model_checkpoint_path)
+        sess.run(tf.global_variables_initializer())
+        softmax_linear = sess.run([softmax_linear], {predict_x: X})
+        print(softmax_linear)
+        # for s in softmax_linear:
+        #     a = 0
+        #     for i in s:
+        #         a += i
+        #     print(a)
+
+
+if __name__ == '__main__':
+    # train()
+    predict()

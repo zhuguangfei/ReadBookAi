@@ -45,8 +45,31 @@ def image_split_two(image_path, image_name):
         img.save(f'split_image_two/{image_name}_{j}.jpg')
 
 
+def image_split_util(image_path, image_name, output_path, width=2, height=2):
+    img_array = image_array(image_path)
+    shape = img_array.shape
+    width_step = int(shape[1] / width)
+    height_step = int(shape[0] / height)
+    # print(shape, width_step, height_step)
+    index = 0
+    for i in range(width):
+        width_array = img_array[:, i * width_step : (i + 1) * width_step, :]
+        for j in range(height):
+            height_array = width_array[j * height_step : (j + 1) * height_step, :, :]
+            img = Image.fromarray(height_array.astype('uint8')).convert('RGB')
+            img.save(f'{output_path}/{image_name}_{index}.jpg')
+            index += 1
+
+
 if __name__ == '__main__':
-    listdir = os.listdir('split_image')
+    parent_path = 'source'
+    output_parent_path = 'source_two'
+    listdir = os.listdir(parent_path)
     for l in listdir:
-        image_path = os.path.join('split_image', l)
-        image_split_two(image_path, l.split('.')[0])
+        images = os.listdir(os.path.join(parent_path, l))
+        output_path = os.path.join(output_parent_path, l)
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+        for image in images:
+            image_path = os.path.join(parent_path, l, image)
+            image_split_util(image_path, image.split('.')[0], output_path)

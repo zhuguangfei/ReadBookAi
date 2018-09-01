@@ -1,6 +1,7 @@
 from urllib import request, parse
 import urllib
-import ssl, sys
+import ssl
+import sys
 import base64
 import json
 import os
@@ -30,9 +31,17 @@ for image in images:
     requ = request.Request(url, headers=headers, data=data)
     response = request.urlopen(requ)
     c = response.read()
+    print(c.decode('utf-8'))
     words_results = json.loads(c.decode('utf-8')).get('words_result')
+<< << << < HEAD
+    name = image.split('.')[0]
+    with open(f'{text_file_path}/{name}.txt', 'w', encoding='utf-8') as w:
+        for words_result in words_results:
+            w.write(words_result.get('words') + '\n')
+== == == =
     if words_results:
         name = image.split('.')[0]
         with open(f'{text_file_path}/{name}.txt', 'w', encoding='utf-8') as w:
             for words_result in words_results:
                 w.write(words_result.get('words') + '\n')
+>>>>>> > 455d47956f6b55e2d067b84af43af96cb15c0c56

@@ -14,8 +14,8 @@ import os
 # print(content)
 # if content:
 # print(content)
-image_file_path = 'source_two/image3'
-text_file_path = 'source_two/text3'
+image_file_path = 'source_two/image4'
+text_file_path = 'source_two/text4'
 if not os.path.exists(text_file_path):
     os.makedirs(text_file_path)
 images = os.listdir(image_file_path)
@@ -33,15 +33,9 @@ for image in images:
     c = response.read()
     print(c.decode('utf-8'))
     words_results = json.loads(c.decode('utf-8')).get('words_result')
-<< << << < HEAD
-    name = image.split('.')[0]
-    with open(f'{text_file_path}/{name}.txt', 'w', encoding='utf-8') as w:
-        for words_result in words_results:
-            w.write(words_result.get('words') + '\n')
-== == == =
+
     if words_results:
         name = image.split('.')[0]
         with open(f'{text_file_path}/{name}.txt', 'w', encoding='utf-8') as w:
             for words_result in words_results:
                 w.write(words_result.get('words') + '\n')
->>>>>> > 455d47956f6b55e2d067b84af43af96cb15c0c56

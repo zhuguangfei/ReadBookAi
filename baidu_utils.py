@@ -14,8 +14,8 @@ import os
 # print(content)
 # if content:
 # print(content)
-image_file_path = 'source_two/image4'
-text_file_path = 'source_two/text4'
+image_file_path = 'source_two/image5'
+text_file_path = 'source_two/text5'
 if not os.path.exists(text_file_path):
     os.makedirs(text_file_path)
 images = os.listdir(image_file_path)

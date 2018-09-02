@@ -102,8 +102,59 @@ def pad_sequences(sequences, maxlen=None, dtype=np.float32, padding='post', trun
     return x, lengths
 
 
-def get_ch_label_v(txt_obj, word_num_map, txt_obj):
-    return ''
+def get_ch_label_v(txt_file, word_num_map, txt_label=None):
+    words_size = len(word_num_map)
+
+    def to_num(word):
+        return word_num_map.get(word, words_size)
+    if txt_file != None:
+        txt_label = get_ch_label(txt_file)
+    labels_vector = list(map(to_num, txt_label))
+    return labels_vector
+
+
+def get_ch_label(txt_file):
+    labels = ' '
+    with open(txt_file, 'rb') as f:
+        for label in f:
+            labels = labels+label
+    return labels
+
+
+def spare_tuple_from(sequences, dtype=np.int32):
+    indices = []
+    values = []
+    for n, seq in enumerate(sequences):
+        indices.extend(zip([n]*len(seq), range(len(seq))))
+        values.append(seq)
+    indices = np.asarray(indices, dtype=np.int64)
+    values = np.asarray(values, dtype=dtype)
+    shape = np.asarray([len(sequences), indices.max(0)[1]+1], dtype=np.int64)
+    return indices, values, shape
+
+
+SPACE_TOKEN = '<space>'
+SPACE_INDEX = 0
+FIRST_INDEX = ord('a')-1
+
+
+def spare_tuple_to_texts_ch(tuple, words):
+    indices = tuple[0]
+    values = tuple[1]
+    results = ['']*tuple[2][0]
+    for i in range(len(indices)):
+        index = indices[i][0]
+        c = values[i]
+        c = ' ' if c == SPACE_INDEX else words[c]
+        results[index] = results[index]+c
+    return results
+
+
+def ndarray_to_text_ch(value, words):
+    results = ''
+    for i in range(len(value)):
+        results += words[value[i]]
+    return results.replace('‘', ' ')
 
 
 def get_audio_and_transcriptch(txt_files, wav_files, n_input, n_context, word_num_map, txt_labels=None):

@@ -206,4 +206,19 @@ for epoch in range(epochs):
         next_idx, source, source_lengths, sparse_labels = next_batch(
             labels, next_idx, batch_size
         )
-
+        feed={input_tensor:source,target:sparse_labels,seq_length:source_lengths,keep_dropout:keep_dropout_rate}
+        batch_cost,_=sess.run([avg_loss,optimizer],feed_dict=feed)
+        train_cost+=batch_cost
+        if (batch+1)==0:
+            feed2={input_tensor:source,target:sparse_labels,seq_length:source_lengths,keep_dropout:1.0}
+            d,train_ler=sess.run([decoded[0],ler],feed_dict=feed2)
+            dense_decoded=tf.sparse_tensor_to_dense(d,default_value=-1).eval(session=sess)
+            dense_labels=spare_tuple_to_texts_ch(spare_labels,words)
+            counter=0
+            for orig,decoded_arr in zip(dense_labels,dense_decoded):
+                decoded_str=ndarray_to_text_ch(decoded_arr,words)
+                counter=counter+1
+        epoch_duration=time.time()-epoch_start
+        saver.save(sess,savedir+'yuyinch.cpkt',global_step=epoch)
+    train_duration=time.time()-train_start
+sess.close()

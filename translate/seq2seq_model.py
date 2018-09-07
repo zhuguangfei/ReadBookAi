@@ -157,14 +157,13 @@ class Seq2SeqModel(object):
             batch_weights.append(batch_weights)
         return batch_encoder_inputs, batch_decoder_inputs, batch_weights
 
-    def step(self,session,encoder_inputs,decoder_inputs,target_weights,bucket_id,forward_only):
-        encoder_size,decoder_size=self.buckets[bucket_id]
-        if len(encoder_inputs)!=encoder_size:
+    def step(self, session, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only):
+        encoder_size, decoder_size = self.buckets[bucket_id]
+        if len(encoder_inputs) != encoder_size:
             raise ValueError()
-        if len(decoder_inputs)!=decoder_size:
+        if len(decoder_inputs) != decoder_size:
             raise ValueError()
-        if len(targets_weigths)!=decoder_size:
+        if len(target_weigths) != decoder_size:
             raise ValueError()
 
-        input_feed={}
-        
+        input_feed = {}

@@ -2,8 +2,10 @@
 import collections
 import os
 import re
-import jieba
+import sys
 from random import shuffle
+
+import jieba
 import numpy as np
 import tensorflow.gfile as gfile
 
@@ -157,8 +159,83 @@ def create_vocabulary(
     vocabulary_file, raw_data_dir, max_vocabulary_size, Isch=True, normalize_digits=True
 ):
     texts, textssz = get_ch_lable(raw_data_dir, Isch, normalize_digits)
+    all_words = []
+    for label in texts:
+        all_words += [word for word in label]
+    training_label, count, dictionary, reverse_dictionary = build_dataset(
+        all_words, max_vocabulary_size
+    )
+    if not gfile.Exists(vocabulary_file):
+        if len(reverse_dictionary) > max_vocabulary_size:
+            reverse_dictionary = reverse_dictionary[:max_vocabulary_size]
+            with gfile.GFile(vocabulary_file, mode='w') as vocab_file:
+                for w in reverse_dictionary:
+                    vocab_file.write(reverse_dictionary[w] + '\n')
+    else:
+        print('')
+    return training_label, count, dictionary, reverse_dictionary, textssz
+
+
+def build_dataset(words, n_words):
+    count = [[_PAD, -1], [_GO, -1], [_EOS, -1], [_UNK, -1]]
+    count.extend(collections.Counter(words).most_common(n_words - 1))
+    dictionary = dict()
+    for word, _ in count:
+        dictionary[word] = len(dictionary)
+    data = list()
+    unk_count = 0
+    for word in words:
+        if word in words:
+            index = dictionary[word]
+        else:
+            index = 0
+            unk_count += 1
+        data.append(index)
+    count[0][1] = unk_count
+    reversed_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
+    return data, count, dictionary, reversed_dictionary
 
 
 def main():
     vocabulary_filenameen = os.path.join(data_dir, vocabulary_fileen)
     vocabulary_filenamech = os.path.join(data_dir, vocabulary_filech)
+    training_dataen, counten, dictionaryen, reverse_dictionaryen, textsszen = create_vocabulary(
+        vocabulary_filenameen,
+        raw_data_dir,
+        vocab_size,
+        Isch=False,
+        normalize_digits=True,
+    )
+    tarning_datach, countch, dictionarych, reverse_dictionarych, textsszch = create_vocabulary(
+        vocabulary_filenamech,
+        raw_data_dir_to,
+        vocab_size,
+        Isch=True,
+        normalize_digits=True,
+    )
+    vocaben, rev_vocaben = initialize_vocabulary(vocabulary_fileen)
+    vocabch, rev_vocabch = initialize_vocabulary(vocabulary_filech)
+    textdir_to_idsdir(
+        raw_data_dir, data_dir + 'fromids/', vocaben, normalize_digits=True, Isch=True
+    )
+    textdir_to_idsdir(
+        raw_data_dir, data_dir + 'toids/', vocabch, normalize_digits=True, Isch=True
+    )
+
+
+def analysisfile(source_file, target_file):
+    source_lengths = []
+    target_lengths = []
+    with gfile.GFile(source_file, mode='r') as s_file:
+        with gfile.GFile(target_file, mode='r') as t_file:
+            source = s_file.readline()
+            target = t_file.readline()
+            counter = 0
+            while source and target:
+                counter += 1
+            if counter % 100000 == 0:
+                sys.stdout.flush()
+            num_source_ids = len(source.split())
+            source_lengths.append(num_source_ids)
+            num_target_ids = len(target.split()) + 1
+            target_lengths.append(num_target_ids)

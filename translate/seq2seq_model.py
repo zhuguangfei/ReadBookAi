@@ -63,3 +63,40 @@ class Seq2SeqModel(object):
                 )
 
             softmax_loss_function = sample_loss
+
+            def seq2seq_f(encoder_inputs, decoder_inputs, do_decode):
+                with tf.variable_scope('GRU') as scope:
+                    cell = tf.contrib.rnn.DropoutWrapper(
+                        tf.contrib.rnn.GRUCell(size),
+                        input_keep_prob=self.dropout_keep_prob_input,
+                        output_keep_prob=self.dropout_keep_prob_output,
+                    )
+                    if num_layers > 1:
+                        cell = tf.contrib.rnn.MultiRNNCell([cell] * num_layers)
+                return tf.contrib.legacy_seq2seq.embedding_attention_seq2seq(
+                    encoder_inputs,
+                    decoder_inputs,
+                    cell,
+                    num_encoder_symbols=source_vocab_size,
+                    num_decoder_symbols=target_vocab_size,
+                    embedding_size=size,
+                    output_projection=output_projection,
+                    feed_previous=do_decode,
+                    dtype=dtype,
+                )
+
+            self.encoder_inputs = []
+            self.decoder_inputs = []
+            self.target_weights = []
+            for i in xrange(buckets[-1][0]):
+                self.encoder_inputs.append(
+                    tf.placeholder(tf.int32, shape=[None], name=f'encoder{i}')
+                )
+            for i in xrange(buckets[-1][1] + 1):
+                self.decoder_inputs.append(
+                    tf.placeholder(tf.int32, shape=[None], name=f'decoder{i}')
+                )
+            targets = [
+                self.decoder_inputs[i + 1] for i in xrange(len(self.decoder_inputs) - 1)
+            ]
+

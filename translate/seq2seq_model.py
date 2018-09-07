@@ -40,9 +40,11 @@ class Seq2SeqModel(object):
         output_projection = None
         softmax_loss_function = None
         if num_samples > 0 and num_samples < self.target_vocab_size:
-            w_t = tf.get_variable('proj_w', [self.target_vocab_size, size], dtype=dtype)
+            w_t = tf.get_variable(
+                'proj_w', [self.target_vocab_size, size], dtype=dtype)
             w = tf.transpose(w_t)
-            b = tf.get_variable('proj_b', [self.target_vocab_size], dtype=dtype)
+            b = tf.get_variable(
+                'proj_b', [self.target_vocab_size], dtype=dtype)
             output_projection = (w, b)
 
             def sample_loss(labels, logits):
@@ -100,3 +102,69 @@ class Seq2SeqModel(object):
                 self.decoder_inputs[i + 1] for i in xrange(len(self.decoder_inputs) - 1)
             ]
 
+            if forward_only:
+                self.outputs, self.losses = tf.contrib.legacy_seq2seq.model_with_buckets(
+                    self.encoder_inputs, self.decoder_inputs, targets, self.target_weights, buckets, lambda x, y: seq2seq_f(
+                        x, y, True), softmax_loss_function=softmax_loss_function
+                )
+                if output_projection is not None:
+                    for b in xrange(len(buckets)):
+                        self.outputs[b] = [tf.matmul(
+                            output, output_projection[0])+output_projection[1] for output in self.outputs[b]]
+                else:
+                    self.outputs, self.losses = tf.contrib.legacy_seq2seq.model_with_buckets(
+                        self.encoder_inputs, self.decoder_inputs, targets, self.target_weights,
+                        buckets, lambda x, y: seq2seq_f(x, y, False),
+                        softmax_loss_function=softmax_loss_function)
+            params = tf.trainable_variables()
+            if not forward_only:
+                self.gradient_norms = []
+                self.updates = []
+                opt = tf.train.GradientDescentOptimizer(self.learning_rate)
+                for b in xrange(len(buckets)):
+                    gradients = tf.gradients(self.losses[b], params)
+                    clipped_gradients, norm = tf.clip_by_global_norm(
+                        gradients, max_gradient_norm)
+                    self.gradient_norms.append(norm)
+                    self.updates.append(
+                        opt.apply_gradients(zip(clipped_gradients, params), global_step=self.global_step))
+            self.saver = tf.train.Saver(tf.global_variables())
+
+    def get_batch(self, data, bucket_id):
+        encoder_size, decoder_size = self.buckets[bucket_id]
+        encoder_inputs, decoder_inputs = [], []
+        for _ in xrange(self.batch_size):
+            encoder_input, decoder_input = random.choice(data[bucket_id])
+            encoder_pad = [data_util.PAD_ID]*(encoder_size-len(encoder_input))
+            encoder_inputs.append(
+                list(reversed(encoder_size-len(encoder_input))))
+            decoder_pad_size = decoder_size-len(decoder_input)-1
+            decoder_inputs.append(
+                [data_util.GO_ID]+decoder_input+[data_util.PAD_ID]*decoder_pad_size)
+        batch_encoder_inputs, batch_decoder_inputs, batch_weights = [], [], []
+        for length_idx in xrange(encoder_size):
+            batch_encoder_inputs.append(np.array(
+                [encoder_inputs[batch_idx][length_idx] for batch_idx in xrange(self.batch_size)], dtype=np.int32))
+        for length_idx in xrange(decoder_size):
+            batch_decoder_inputs.append(np.array(
+                [decoder_inputs[batch_idx][length_idx] for batch_idx in xrange(self.batch_size)], dtype=np.int32))
+            batch_weights = np.ones(self.batch_size, dtype=np.float32)
+            for batch_idx in xrange(self.batch_size):
+                if length_idx < decoder_size-1:
+                    target = decoder_input[batch_idx][length_idx+1]
+                if length_idx == decoder_size-1 or target == data_util.PAD_ID:
+                    batch_weights[batch_idx] = 0.0
+            batch_weights.append(batch_weights)
+        return batch_encoder_inputs, batch_decoder_inputs, batch_weights
+
+    def step(self,session,encoder_inputs,decoder_inputs,target_weights,bucket_id,forward_only):
+        encoder_size,decoder_size=self.buckets[bucket_id]
+        if len(encoder_inputs)!=encoder_size:
+            raise ValueError()
+        if len(decoder_inputs)!=decoder_size:
+            raise ValueError()
+        if len(targets_weigths)!=decoder_size:
+            raise ValueError()
+
+        input_feed={}
+        

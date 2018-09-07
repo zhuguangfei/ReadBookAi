@@ -29,7 +29,7 @@ raw_data_dir_to = 'fanyichina/yuliao/to'
 vocabulary_fileen = 'dicten.txt'
 vocabulary_filech = 'dictch.txt'
 
-plot_histograms = plot_catter = True
+plot_histograms = plot_scatter = True
 vocab_size = 4000
 
 max_num_lines = 1
@@ -223,6 +223,11 @@ def main():
     textdir_to_idsdir(
         raw_data_dir, data_dir + 'toids/', vocabch, normalize_digits=True, Isch=True
     )
+    filesfrom, _ = getRawFileList(data_dir + 'fromids/')
+    filesto, _ = getRawFileList(data_dir + 'toids/')
+    source_train_file_path = filesfrom[0]
+    target_train_file_path = filesto[0]
+    analysisfile(source_train_file_path, target_train_file_path)
 
 
 def plot_scatter_lengths(title, x_title, y_title, x_lengths, y_lengths):
@@ -267,4 +272,14 @@ def analysisfile(source_file, target_file):
             target_lengths.append(num_target_ids)
             source, target = s_file.readline(), t_file.readline()
     if plot_histograms:
-        pass
+        plot_histo_lengths("target_lengths", target_lengths)
+        plot_histo_lengths("source_lengths", source_lengths)
+    if plot_scatter:
+        plot_scatter_lengths(
+            "target vs source length",
+            "source length",
+            "target_length",
+            source_lengths,
+            target_lengths,
+        )
+

@@ -6,6 +6,8 @@ import sys
 from random import shuffle
 
 import jieba
+import matplotlib.mlab as mlab
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow.gfile as gfile
 
@@ -223,6 +225,30 @@ def main():
     )
 
 
+def plot_scatter_lengths(title, x_title, y_title, x_lengths, y_lengths):
+    plt.scatter(x_lengths, y_lengths)
+    plt.title(title)
+    plt.xlabel(x_title)
+    plt.ylabel(y_title)
+    plt.ylim(0, max(y_lengths))
+    plt.xlim(0, max(x_lengths))
+    plt.show()
+
+
+def plot_histo_lengths(title, lengths):
+    mu = np.std(lengths)
+    sigma = np.mean(lengths)
+    x = np.array(lengths)
+    n, bins, patches = plt.hist(x, 50, facecolor='green', alpha=0.5)
+    y = mlab.normpdf(bins, mu, sigma)
+    plt.plot(bins, y, 'r--')
+    plt.title(title)
+    plt.xlabel('Length')
+    plt.ylabel('Number of Sequences')
+    plt.xlim(0, max(lengths))
+    plt.show()
+
+
 def analysisfile(source_file, target_file):
     source_lengths = []
     target_lengths = []
@@ -239,3 +265,6 @@ def analysisfile(source_file, target_file):
             source_lengths.append(num_source_ids)
             num_target_ids = len(target.split()) + 1
             target_lengths.append(num_target_ids)
+            source, target = s_file.readline(), t_file.readline()
+    if plot_histograms:
+        pass

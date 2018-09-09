@@ -50,7 +50,7 @@ class Seq2SeqModel(object):
             def sample_loss(labels, logits):
                 labels = tf.reshape(labels, [-1, 1])
                 local_w_t = tf.cast(w_t, tf.float32)
-                local_b = tf.cast(w, tf.float32)
+                local_b = tf.cast(b, tf.float32)
                 local_inputs = tf.cast(logits, tf.float32)
                 return tf.cast(
                     tf.nn.sampled_softmax_loss(

@@ -40,7 +40,7 @@ def getfanyi():
     filesfrom, _ = datautil.getRawFileList(datautil.data_dir+'fromids')
     filesto, _ = datautil.getRawFileList(datautil.data_dir+'toids/')
     source_train_file_path = filesfrom[0]
-    target_train_file_path = filesfrom[0]
+    target_train_file_path = filesto[0]
     return vocab_sizeen, vocab_sizech, rev_vocaben, rev_vocabch, source_train_file_path, target_train_file_path
 
 

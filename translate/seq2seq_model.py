@@ -163,7 +163,27 @@ class Seq2SeqModel(object):
             raise ValueError()
         if len(decoder_inputs) != decoder_size:
             raise ValueError()
-        if len(target_weigths) != decoder_size:
+        if len(target_weights) != decoder_size:
             raise ValueError()
 
         input_feed = {}
+        for l in xrange(encoder_inputs):
+            input_feed[self.encoder_inputs[l].name] = encoder_inputs[l]
+        for l in xrange(decoder_inputs):
+            input_feed[self.decoder_inputs[l].name] = decoder_inputs[l]
+            input_feed[self.target_weights[l].name] = target_weights[l]
+        last_target = self.decoder_inputs[decoder_size].name
+        input_feed[last_target] = np.zeros([self.batch_size], dtype=np.int32)
+
+        if not forward_only:
+            output_feed = [self.updates[bucket_id],
+                           self.gradient_norms[bucket_id], self.losses[bucket_id]]
+        else:
+            output_feed = [self.losses[bucket_id]]
+            for l in xrange(decoder_size):
+                output_feed.append(self.outputs[bucket_id])
+        outputs = session.run(output_feed, input_feed)
+        if not forward_only:
+            return outputs[1], outputs[2], None
+        else:
+            return None, outputs[0], outputs[1:]

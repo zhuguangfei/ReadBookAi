@@ -60,3 +60,30 @@ def get_ch_path_text(raw_data_dir, Isch=True, normalize_digits=False):
 
 def create_vocabulary(vocabulary_file, raw_data_dir, max_vocabulary_size, Isch=True, normalize_digits=True):
     pass
+
+
+data_dir = 'datacn'
+raw_data_to = 'datacn/dialog/'
+vocabulary_filech = 'dictch.txt'
+plot_histograms = plot_scatter = True
+vocab_size = 40000
+
+max_num_lines = 1
+max_target_size = 200
+max_source_size = 200
+
+
+def create_seq2seqfile(training_data, soruce_file, target_file, textssz):
+    pass
+
+
+def splitFileOneline(training_data, textssz):
+    source_file = os.path.join(data_dir+'fromids/', "data_source_test.txt")
+    target_file = os.path.join(data_dir+'toids/', "data_target_test.txt")
+    create_seq2seqfile(training_data, soruce_file, target_file, textssz)
+    return source_file, target_file
+
+
+def main():
+    # training_dataen =
+    pass

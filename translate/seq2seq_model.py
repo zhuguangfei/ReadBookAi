@@ -148,13 +148,13 @@ class Seq2SeqModel(object):
         for length_idx in xrange(decoder_size):
             batch_decoder_inputs.append(np.array(
                 [decoder_inputs[batch_idx][length_idx] for batch_idx in xrange(self.batch_size)], dtype=np.int32))
-            batch_weights = np.ones(self.batch_size, dtype=np.float32)
+            batch_weight = np.ones(self.batch_size, dtype=np.float32)
             for batch_idx in xrange(self.batch_size):
                 if length_idx < decoder_size-1:
                     target = decoder_input[batch_idx][length_idx+1]
                 if length_idx == decoder_size-1 or target == data_util.PAD_ID:
-                    batch_weights[batch_idx] = 0.0
-            batch_weights.append(batch_weights)
+                    batch_weight[batch_idx] = 0.0
+            batch_weights.append(batch_weight)
         return batch_encoder_inputs, batch_decoder_inputs, batch_weights
 
     def step(self, session, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only):

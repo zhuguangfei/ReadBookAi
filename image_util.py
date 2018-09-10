@@ -2,6 +2,7 @@
 import numpy as np
 from PIL import Image
 import os
+import cv2 as cv
 
 
 def image_array(image_path):

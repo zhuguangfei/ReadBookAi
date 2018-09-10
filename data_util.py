@@ -1,7 +1,15 @@
 # -*- coding:utf-8 -*-
-import jieba
 import collections
-import os, shutil
+import os
+import shutil
+
+import jieba
+import numpy as np
+from PIL import Image
+
+import cv2 as cv
+import image_util
+from image_util import edge_cannny
 
 _PAD = '_PAD'
 _GO = '_GO'
@@ -16,54 +24,54 @@ UNK_ID = 3
 
 def build_vocabulary():
     words = []
-    for i in range(12):
-        file_paths = os.listdir(f'text{i+1}')
-        for file_path in file_paths:
-            with open(
-                os.path.join(f'text{i+1}', file_path), 'r', encoding='utf-8'
-            ) as r:
-                lines = r.read().split('\n')
-                for line in lines:
-                    words = words + [word for word in line]
+    labels_len = []
+    labels = os.listdir('labels')
+    for label in labels:
+        with open(os.path.join('labels', label), 'r', encoding='utf-8') as r:
+            label_words = []
+            lines = r.read().split('\n')
+            for line in lines:
+                words = words + [word for word in line]
+                label_words = label_words + [word for word in line]
+            labels_len.append(len(label_words))
     count = [[_PAD, -1], [_GO, -1], [_EOS, -1], [_UNK, -1]]
     count.extend(collections.Counter(words).most_common(len(words) - 1))
     with open('words.txt', 'w', encoding='utf-8') as w:
+        w.write(f'{np.max(labels_len)}\n\n')
+    with open('words.txt', 'a', encoding='utf-8') as w:
         for c in count:
             w.write(f'{c[0]}\n')
 
 
 def get_vocabulary():
     with open('words.txt', 'r', encoding='utf-8') as r:
-        words = r.read().split('\n')
+        words = r.read().strip().split('\n')
     words_index = dict()
     for k, v in enumerate(words):
-        words_index[v] = k
+        if k > 0:
+            words_index[v] = k - 1
     return words_index
 
 
 def gen_label():
     words_index = get_vocabulary()
-    for i in range(12):
-        file_paths = os.listdir(f'text{i+1}')
-        for file_path in file_paths:
-            if file_path != 'label':
-                with open(
-                    os.path.join(f'label', file_path.split('.')[0] + '_label.txt'),
-                    'w',
-                    encoding='utf-8',
-                ) as w:
-                    indexs = []
-                    with open(
-                        os.path.join(f'text{i+1}', file_path), 'r', encoding='utf-8'
-                    ) as r:
-                        line = r.read()
-                        for word in line:
-                            if word == '\n':
-                                indexs.append(str(words_index.get('_EOS')))
-                            else:
-                                indexs.append(str(words_index.get(word)))
-                    if len(indexs) > 0:
-                        w.write(' '.join(indexs))
+    labels = os.listdir('labels')
+    for label in labels:
+        with open(
+            os.path.join('labelsids', label.split('.')[0] + '_label.txt'),
+            'w',
+            encoding='utf-8',
+        ) as w:
+            indexs = []
+            with open(os.path.join('labels', label), 'r', encoding='utf-8') as r:
+                line = r.read()
+                for word in line:
+                    if word == '\n':
+                        indexs.append(str(words_index.get('_EOS')))
+                    else:
+                        indexs.append(str(words_index.get(word)))
+            if len(indexs) > 0:
+                w.write(' '.join(indexs))
 
 
 def move_image():
@@ -86,43 +94,55 @@ def move_image():
                 )
 
 
+def normal_image():
+    images = os.listdir('images')
+    for image in images:
+        image_path = os.path.join('images', image)
+        img = cv.imread(image_path)
+        img = edge_cannny(img)
+        img = Image.fromarray(img.astype('uint8'))
+        img.save(os.path.join('normal_image', image))
+
+
 def label_length():
-    labels = os.listdir('label')
+    labels = os.listdir('labels')
     count = []
     for label in labels:
-        with open(os.path.join('label', label), 'r', encoding='utf-8') as r:
+        with open(os.path.join('labels', label), 'r', encoding='utf-8') as r:
             count.append(len(r.read().split(' ')))
     count = collections.Counter(count).most_common(len(count) - 1)
     print(count[0][1])
 
 
-from PIL import Image
-import numpy as np
+max_len = 35
 
 
 def get_xy():
-    images = os.listdir('image')
+    words_size = len(get_vocabulary().keys())
+    images = os.listdir('normal_image')
     X = []
     for image in images:
-        image = Image.open(os.path.join('image', image))
+        image = Image.open(os.path.join('normal_image', image))
         X.append(np.array(image))
-    labels = os.listdir('label')
+    labels = os.listdir('labelsids')
     Y = []
     for label in labels:
-        with open(os.path.join('label', label), 'r') as r:
+        with open(os.path.join('labelsids', label), 'r') as r:
             words = r.read().split(' ')
             words = [word for word in words if word.strip()]
-            if len(words) <= 80:
-                for _ in range(80 - len(words)):
+            if len(words) <= max_len:
+                for _ in range(max_len - len(words)):
                     words.append(str('0'))
             else:
-                words = words[0:80]
+                words = words[0:max_len]
             y = []
             for w in words:
-                y.append(int(w))
+                word_label = np.zeros([words_size], dtype=np.int64)
+                word_label[int(w)] = 1
+                y.append(word_label)
             Y.append(y)
-    X = np.array(X, np.int16)
-    Y = np.array(Y, np.int16)
+    X = np.array(X, np.float64)
+    Y = np.array(Y, np.flaot64)
     return X, Y
 
 
@@ -138,11 +158,11 @@ def get_xy_test():
         with open(os.path.join('label_test', label), 'r') as r:
             words = r.read().split(' ')
             words = [word for word in words if word.strip()]
-            if len(words) <= 80:
-                for _ in range(80 - len(words)):
+            if len(words) <= max_len:
+                for _ in range(max_len - len(words)):
                     words.append(str('0'))
             else:
-                words = words[0:80]
+                words = words[0:max_len]
             y = []
             for w in words:
                 y.append(int(w))
@@ -155,6 +175,11 @@ def get_xy_test():
 if __name__ == '__main__':
     # build_vocabulary()
     # gen_label()
-    move_image()
+    # move_image()
     # label_length()
     # get_xy()
+    # normal_image()
+    word_label = np.zeros([10, 1], dtype=np.int64)
+    word_label[2] = 1
+    print(word_label.shape)
+    pass

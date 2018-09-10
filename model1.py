@@ -1,6 +1,8 @@
 # -*- coding:utf-8 -*-
 import tensorflow as tf
 
+from data_util import get_xy
+
 
 def create_variable(name, shape, initializer):
     var = tf.get_variable(name=name, shape=shape, initializer=initializer)
@@ -60,8 +62,54 @@ def build_graph(batch_size, width, height, channel):
         local4 = tf.nn.relu(tf.matmul(local3, weights) + biases, name=scope.name)
     with tf.variable_scope('softmax_linear') as scope:
         weights = create_variable_with_weight_decay(
-            'weights', [192, 100], stddev=1 / 192, wd=0.0
+            'weights', [192, 35], stddev=1 / 192, wd=0.0
         )
-        biases = create_variable('biases', [100], tf.constant_initializer(0.0))
+        biases = create_variable('biases', [35], tf.constant_initializer(0.0))
         softmax_linear = tf.add(tf.matmul(local4, weights) + biases)
     return softmax_linear
+
+
+def loss(logits, labels):
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
+        labels=labels, logits=logits, name='cross_entropy_per_example'
+    )
+    cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
+    return cross_entropy_mean
+
+
+batch_size = 32
+height = 250
+weigth = 250
+channel = 3
+max_len = 35
+words_len = 2022
+learning_rate = 0.001
+train_epochs = 10
+
+
+def train():
+    X, Y = get_xy()
+    train_x = tf.placeholder(tf.float64, [batch_size, height, weigth, channel])
+    train_y = tf.placeholder(tf.float64, [batch_size, max_len, words_len])
+    softmax_linear = build_graph(batch_size, height, weigth, channel)
+    loss_mean = loss(softmax_linear, train_y)
+    optimizer = tf.train.AdadeltaOptimizer(learning_rate=learning_rate).minimize(
+        loss_mean
+    )
+    savedir = 'save'
+    saver = tf.train.Saver(max_to_keep=2)
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        for step in range(train_epochs):
+            indexs = np.random.choice(range(len(X)), 10)
+            batch_x = X[indexs]
+            batch_y = Y[indexs]
+            ls, _ = sess.run(
+                [loss_mean, optimizer], feed_dict={train_x: batch_x, train_y: batch_y}
+            )
+            saver.save(sess, savedir + '/checkpoint', global_step=step)
+            print(ls)
+
+
+if __name__ == '__main__':
+    train()

@@ -14,9 +14,9 @@ def image_split(image_path, image_name, steps=500):
     img_array = img_array[7:3010, 15:4019, :]
     index = 0
     for i in range(3):
-        im_height = img_array[i * 1000: (i + 1) * 1000, :, :]
+        im_height = img_array[i * 1000 : (i + 1) * 1000, :, :]
         for j in range(8):
-            im_widht = im_height[:, j * 500: (j + 1) * 500, :]
+            im_widht = im_height[:, j * 500 : (j + 1) * 500, :]
             img = Image.fromarray(im_widht.astype('uint8')).convert('RGB')
             img = img.transpose(Image.ROTATE_270)
             img.save(f'split_image/{image_name}_{index}.jpg')
@@ -53,10 +53,9 @@ def image_split_util(image_path, image_name, output_path, width=3, height=3):
     # print(shape, width_step, height_step)
     index = 0
     for i in range(width):
-        width_array = img_array[:, i * width_step: (i + 1) * width_step, :]
+        width_array = img_array[:, i * width_step : (i + 1) * width_step, :]
         for j in range(height):
-            height_array = width_array[j *
-                                       height_step: (j + 1) * height_step, :, :]
+            height_array = width_array[j * height_step : (j + 1) * height_step, :, :]
             img = Image.fromarray(height_array.astype('uint8')).convert('RGB')
             img.save(f'{output_path}/{image_name}_{index}.jpg')
             index += 1
@@ -87,13 +86,10 @@ def show_image():
     img.save('demo.jpg')
 
 
-import cv2 as cv
-
-
 def contiguous_difference(index):
     index_temp = np.append(index, np.zeros((1, 1)))
     index_temp = np.delete(index_temp, 0).reshape(-1, 1).astype('int')
-    temp = np.argwhere(np.delete(index_temp-index, len(index_temp)-1) != 1)
+    temp = np.argwhere(np.delete(index_temp - index, len(index_temp) - 1) != 1)
     return temp
 
 
@@ -138,10 +134,13 @@ def split(edge_output):
     print(temp)
     for i in range(len(temp)):
         print(index2[int(temp[i])][0])
-        print(index2[int(temp[i])+1][0])
+        print(index2[int(temp[i]) + 1][0])
         print('-----------------------')
         img = Image.fromarray(
-            edge_output[index2[int(temp[i])][0]: index2[int(temp[i])+1][0], :].astype('uint8'))
+            edge_output[
+                index2[int(temp[i])][0] : index2[int(temp[i]) + 1][0], :
+            ].astype('uint8')
+        )
         img.save(f'{i}.jpg')
 
 
@@ -156,8 +155,7 @@ if __name__ == '__main__':
     img = cv.imread('image.jpg')
     # print(img.shape)
     img = cv.rotate()
-    img = Image.fromarray(
-        img[:, :1800, :].astype('uint8'))
+    img = Image.fromarray(img[:, :1800, :].astype('uint8'))
     img.save('img.jpg')
 
     # edge_output = edge_cannny(img)

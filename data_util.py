@@ -67,17 +67,22 @@ def gen_label():
 
 
 def move_image():
-    labels = os.listdir('label')
-    images = []
+    labels = os.listdir('source_two')
     for label in labels:
-        images.append(label.replace('_label.txt', '.jpg'))
-    # print(images)
-    for i in range(12):
-        file_paths = os.listdir(f'image{i+1}')
-        for file_path in file_paths:
-            if file_path in images:
-                shutil.copyfile(
-                    os.path.join(f'image{i+1}', file_path), f'image/{file_path}'
+        if label.startswith('text'):
+            path = os.path.join('source_two', label)
+            ll = os.listdir(path)
+            for file_path in ll:
+                shutil.move(
+                    os.path.join('source_two', label, file_path), f'labels/{file_path}'
+                )
+                shutil.move(
+                    os.path.join(
+                        'source_two',
+                        label.replace('text', 'image'),
+                        file_path.replace('.txt', '.jpg'),
+                    ),
+                    f"images/{file_path.replace('.txt', '.jpg')}",
                 )
 
 
@@ -150,6 +155,6 @@ def get_xy_test():
 if __name__ == '__main__':
     # build_vocabulary()
     # gen_label()
-    # move_image()
+    move_image()
     # label_length()
-    get_xy()
+    # get_xy()

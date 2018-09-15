@@ -111,7 +111,7 @@ def train():
 
 def predict():
     X, Y = get_xy_test()
-    predict_x = tf.placeholder(tf.float16, [1, 500, 500, 3])
+    predict_x = tf.placeholder(tf.float16, [1, 250, 500, 3])
     softmax_linear = inference(predict_x)
     saver = tf.train.Saver(tf.global_variables())
     with tf.Session() as sess:
@@ -120,11 +120,6 @@ def predict():
         sess.run(tf.global_variables_initializer())
         softmax_linear = sess.run([softmax_linear], {predict_x: X})
         print(softmax_linear)
-        # for s in softmax_linear:
-        #     a = 0
-        #     for i in s:
-        #         a += i
-        #     print(a)
 
 
 if __name__ == '__main__':

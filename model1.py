@@ -1,11 +1,14 @@
 # -*- coding:utf-8 -*-
 import tensorflow as tf
 
-from data_util import get_xy
+from data_util import get_xy, get_xy_test
+import numpy as np
 
 
 def create_variable(name, shape, initializer):
-    var = tf.get_variable(name=name, shape=shape, initializer=initializer)
+    var = tf.get_variable(
+        name=name, shape=shape, dtype=tf.float32, initializer=initializer
+    )
     return var
 
 
@@ -17,8 +20,7 @@ def create_variable_with_weight_decay(name, shape, stddev, wd):
     return var
 
 
-def build_graph(batch_size, width, height, channel):
-    input_x = tf.placeholder(tf.int8, [batch_size, height, width, channel])
+def build_graph(input_x, batch_size):
     with tf.variable_scope('conv1') as scope:
         kernel = create_variable_with_weight_decay(
             'weights', shape=[5, 5, 3, 64], stddev=1e-4, wd=0.0
@@ -27,7 +29,9 @@ def build_graph(batch_size, width, height, channel):
         biases = create_variable('biases', [64], tf.constant_initializer(0.0))
         bias = tf.nn.bias_add(conv, biases)
         conv1 = tf.nn.relu(bias, name=scope.name)
-    pool1 = tf.nn.max_pool(conv1, ksize=[1, 3, 3, 1], padding='SAME')
+    pool1 = tf.nn.max_pool(
+        conv1, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='SAME'
+    )
 
     norml1 = tf.nn.lrn(pool1, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norml1')
 
@@ -41,13 +45,15 @@ def build_graph(batch_size, width, height, channel):
         conv2 = tf.nn.relu(bias, name=scope.name)
 
     norml2 = tf.nn.lrn(conv2, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norml2')
-    pool2 = tf.nn.max_pool(norml2, ksize=[1, 3, 3, 1], padding='SAME')
+    pool2 = tf.nn.max_pool(
+        norml2, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='SAME'
+    )
 
     with tf.variable_scope('local3') as scope:
         dim = 1
-        for d in pool1.get_shape()[1:].as_list():
+        for d in pool2.get_shape()[1:].as_list():
             dim *= d
-        reshape = tf.reshape(pool2, [32, dim])
+        reshape = tf.reshape(pool2, [batch_size, dim])
         weights = create_variable_with_weight_decay(
             'weights', shape=[dim, 384], stddev=1e-4, wd=0.004
         )
@@ -62,54 +68,119 @@ def build_graph(batch_size, width, height, channel):
         local4 = tf.nn.relu(tf.matmul(local3, weights) + biases, name=scope.name)
     with tf.variable_scope('softmax_linear') as scope:
         weights = create_variable_with_weight_decay(
-            'weights', [192, 35], stddev=1 / 192, wd=0.0
+            'weights', [192, words_len], stddev=1 / 192, wd=0.0
         )
-        biases = create_variable('biases', [35], tf.constant_initializer(0.0))
-        softmax_linear = tf.add(tf.matmul(local4, weights) + biases)
+        biases = create_variable('biases', [words_len], tf.constant_initializer(0.0))
+        softmax_linear = tf.add(tf.matmul(local4, weights), biases)
     return softmax_linear
 
 
-def loss(logits, labels):
-    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
-        labels=labels, logits=logits, name='cross_entropy_per_example'
-    )
-    cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
-    return cross_entropy_mean
+def loss(logits, labels, labels_weights):
+    losses = []
+    for k in range(words_len):
+        logits_k = logits[k]
+        label_k = labels[k]
+        weight_k = labels_weights[k]
+        print(logits_k.shape)
+        print(label_k.shape)
+        print(weight_k.shape)
+        # tf.nn.softmax_cross_entropy_with_logits()
+        # tf.nn.sparse_softmax_cross_entropy_with_logits()
+        loss_k = tf.losses.sparse_softmax_cross_entropy(
+            labels=label_k, logits=logits_k, weights=weight_k
+        )
+        # cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
+        #     labels=labels, logits=logits, name='cross_entropy_per_example'
+        # )
+        losses.append(loss_k)
+    loss_ = tf.reduce_mean(losses)
+
+    predicts = []
+    corrects = []
+    # task_accuracys = []
+    for i in range(words_len):
+        predict = tf.cast(tf.argmax(logits[i], axis=1), 'int32')
+        predict = tf.multiply(predict, tf.cast(labels_weights[i], 'int32'))
+        # correct = tf.cast(tf.equal(predict, tf.unstack(labels, axis=0)[i]), 'float')
+        # correct = tf.multiply(correct, labels_weights[i])
+        # corrects.append(correct)
+        # accuracy = tf.reduce_sum(correct) / tf.reduce_sum(labels_weights)
+        predicts.append(predict)
+        # task_accuracys.append(accuracy)
+
+    return loss_, predicts, corrects
 
 
-batch_size = 32
+batch_size = 10
 height = 250
 weigth = 250
 channel = 3
 max_len = 35
 words_len = 2022
 learning_rate = 0.001
-train_epochs = 10
+train_epochs = 30
+
+
+def get_batch(X, Y):
+    indexs = np.random.choice(len(X), batch_size)
+    label_weights = []
+    batch_x = X[indexs]
+    batch_y = Y[indexs]
+    for y, v in enumerate(batch_y):
+        weight = []
+        for k, yk in enumerate(v):
+            weight.append(yk)
+        label_weights.append(weight)
+    label_weights = np.array(label_weights, np.int32)
+    return batch_x, batch_y, label_weights
 
 
 def train():
     X, Y = get_xy()
-    train_x = tf.placeholder(tf.float64, [batch_size, height, weigth, channel])
-    train_y = tf.placeholder(tf.float64, [batch_size, max_len, words_len])
-    softmax_linear = build_graph(batch_size, height, weigth, channel)
-    loss_mean = loss(softmax_linear, train_y)
-    optimizer = tf.train.AdadeltaOptimizer(learning_rate=learning_rate).minimize(
-        loss_mean
-    )
+    train_x = tf.placeholder(tf.float32, [None, height, weigth, channel])
+    train_y = tf.placeholder(tf.int32, [words_len, None])
+    y_weights = tf.placeholder(tf.int32, [words_len, None])
+    softmax_linear = build_graph(train_x, batch_size)
+    loss_, predicts, corrects = loss(softmax_linear, train_y, y_weights)
+    optimizer = tf.train.AdadeltaOptimizer(learning_rate=learning_rate).minimize(loss_)
     savedir = 'save'
-    saver = tf.train.Saver(max_to_keep=2)
+    saver = tf.train.Saver(max_to_keep=5)
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         for step in range(train_epochs):
-            indexs = np.random.choice(range(len(X)), 10)
-            batch_x = X[indexs]
-            batch_y = Y[indexs]
+            batch_x, batch_y, label_weights = get_batch(X, Y)
+            batch_y = tf.transpose(batch_y)
+            label_weights = tf.transpose(label_weights)
             ls, _ = sess.run(
-                [loss_mean, optimizer], feed_dict={train_x: batch_x, train_y: batch_y}
+                [corrects, optimizer],
+                feed_dict={
+                    train_x: batch_x,
+                    train_y: batch_y,
+                    y_weights: label_weights,
+                },
             )
             saver.save(sess, savedir + '/checkpoint', global_step=step)
-            print(ls)
+            print('-' * 100, ls)
+
+
+def predict():
+    X = get_xy_test()
+    predict_x = tf.placeholder(tf.float32, [None, 250, 250, 3])
+    softmax_linear = build_graph(predict_x, 1)
+    # predict_y = tf.cast(tf.argmax(softmax_linear, axis=1), "int32")
+    # predict = tf.multiply(predict, tf.cast(self.expand_label_weights[i],'int32'))
+    saver = tf.train.Saver(tf.global_variables())
+    with tf.Session() as sess:
+        ckpt = tf.train.get_checkpoint_state('save')
+        saver.restore(sess, ckpt.model_checkpoint_path)
+        sess.run(tf.global_variables_initializer())
+        softmax_linear = sess.run([softmax_linear], {predict_x: X})
+        print(softmax_linear)
+        # with open('a.txt', 'w') as w:
+        # for i in predict_y:
+        # w.write(f'{i}\n')
 
 
 if __name__ == '__main__':
     train()
+    # predict()

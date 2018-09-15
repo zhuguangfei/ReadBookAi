@@ -119,11 +119,11 @@ max_len = 35
 
 def get_xy():
     words_size = len(get_vocabulary().keys())
-    images = os.listdir('normal_image')
+    images = os.listdir('images')
     X = []
-    for image in images:
-        image = Image.open(os.path.join('normal_image', image))
-        X.append(np.array(image))
+    # for image in images:
+    #     image = Image.open(os.path.join('images', image))
+    #     X.append(np.array(image))
     labels = os.listdir('labelsids')
     Y = []
     for label in labels:
@@ -135,14 +135,15 @@ def get_xy():
                     words.append(str('0'))
             else:
                 words = words[0:max_len]
-            y = []
+            word_label = np.zeros([words_size], dtype=np.int64)
             for w in words:
-                word_label = np.zeros([words_size], dtype=np.int64)
                 word_label[int(w)] = 1
-                y.append(word_label)
-            Y.append(y)
-    X = np.array(X, np.float64)
-    Y = np.array(Y, np.flaot64)
+            Y.append(word_label)
+
+        image = Image.open(os.path.join('images', label.replace('_label.txt', '.jpg')))
+        X.append(np.array(image))
+    X = np.array(X, np.float32)
+    Y = np.array(Y, np.float32)
     return X, Y
 
 
@@ -152,34 +153,15 @@ def get_xy_test():
     for image in images:
         image = Image.open(os.path.join('image_test', image))
         X.append(np.array(image))
-    labels = os.listdir('label_test')
-    Y = []
-    for label in labels:
-        with open(os.path.join('label_test', label), 'r') as r:
-            words = r.read().split(' ')
-            words = [word for word in words if word.strip()]
-            if len(words) <= max_len:
-                for _ in range(max_len - len(words)):
-                    words.append(str('0'))
-            else:
-                words = words[0:max_len]
-            y = []
-            for w in words:
-                y.append(int(w))
-            Y.append(y)
-    X = np.array(X, np.int16)
-    Y = np.array(Y, np.int16)
-    return X, Y
+    X = np.array(X, np.float32)
+    return X
 
 
 if __name__ == '__main__':
     # build_vocabulary()
     # gen_label()
-    # move_image()
+    move_image()
     # label_length()
     # get_xy()
     # normal_image()
-    word_label = np.zeros([10, 1], dtype=np.int64)
-    word_label[2] = 1
-    print(word_label.shape)
     pass

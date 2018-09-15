@@ -82,7 +82,8 @@ def move_image():
             ll = os.listdir(path)
             for file_path in ll:
                 shutil.move(
-                    os.path.join('source_two', label, file_path), f'labels/{file_path}'
+                    os.path.join('source_two', label,
+                                 file_path), f'labels/{file_path}'
                 )
                 shutil.move(
                     os.path.join(
@@ -175,11 +176,11 @@ def get_xy_test():
 if __name__ == '__main__':
     # build_vocabulary()
     # gen_label()
-    # move_image()
+    move_image()
     # label_length()
     # get_xy()
     # normal_image()
-    word_label = np.zeros([10, 1], dtype=np.int64)
-    word_label[2] = 1
-    print(word_label.shape)
-    pass
+    # word_label = np.zeros([10, 1], dtype=np.int64)
+    # word_label[2] = 1
+    # print(word_label.shape)
+    # pass
